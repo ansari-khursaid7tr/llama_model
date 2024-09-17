@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Text Generation Model</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366f1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-100 to-indigo-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="p-8 bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                <h1 class="text-3xl font-bold mb-2">LLM Text Generation Model</h1>
+                <p class="text-purple-100">Harness the power of advanced language models</p>
+            </div>
+            <div class="p-8">
+                <div class="mb-6">
+                    <label for="model-select" class="block text-sm font-medium text-gray-700 mb-2">Select Model</label>
+                    <div class="relative">
+                        <select id="model-select" class="custom-select w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                            {% for model in models %}
+                                <option value="{{ model }}">{{ model|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label for="input-text" class="block text-sm font-medium text-gray-700 mb-2">Input Text <span class="text-red-600">*</span></label>
+                    <textarea id="input-text" class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="4" placeholder="Enter your text here..." required></textarea>
+                    <p id="input-error" class="mt-1 text-red-600 text-sm hidden">Please enter input text before generating.</p>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button id="generate-btn" class="px-6 py-2 bg-indigo-600 text-white rounded-md font-semibold hover:bg-indigo-700 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
+                        Generate Text
+                    </button>
+                    <button id="clear-btn" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md font-semibold hover:bg-gray-400 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
+                        Clear
+                    </button>
+                </div>
+                <div id="output" class="mt-8 p-6 bg-gray-50 rounded-md border border-gray-200 shadow-inner min-h-[100px]">
+                    <p class="text-gray-500 italic">Generated text will appear here...</p>
+                </div>
+                <div id="regenerate-container" class="mt-4 text-center hidden">
+                    <button id="regenerate-btn" class="px-6 py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
+                        Regenerate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inputText = document.getElementById('input-text');
+        const modelSelect = document.getElementById('model-select');
+        const outputDiv = document.getElementById('output');
+        const generateBtn = document.getElementById('generate-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const regenerateBtn = document.getElementById('regenerate-btn');
+        const regenerateContainer = document.getElementById('regenerate-container');
+        const inputError = document.getElementById('input-error');
+
+        async function generateText() {
+            const text = inputText.value.trim();
+
+            if (!text) {
+                inputError.classList.remove('hidden');
+                inputText.classList.add('border-red-500');
+                return;
+            }
+
+            inputError.classList.add('hidden');
+            inputText.classList.remove('border-red-500');
+
+            const selectedModel = modelSelect.value;
+
+            outputDiv.innerHTML = '<p class="text-indigo-600 font-semibold animate-pulse">Generating...</p>';
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                const response = await fetch('/generate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input_text: text,
+                        model: selectedModel
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    outputDiv.innerHTML = `<p class="text-red-600">${data.error}</p>`;
+                } else {
+                    outputDiv.innerHTML = `<p class="text-gray-800">${data.generated_text}</p>`;
+                    regenerateContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                outputDiv.innerHTML = '<p class="text-red-600">Error generating text. Please try again.</p>';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function clearFields() {
+            inputText.value = '';
+            outputDiv.innerHTML = '<p class="text-gray-500 italic">Generated text will appear here...</p>';
+            regenerateContainer.classList.add('hidden');
+            inputError.classList.add('hidden');
+            inputText.classList.remove('border-red-500');
+        }
+
+        generateBtn.addEventListener('click', generateText);
+        clearBtn.addEventListener('click', clearFields);
+        regenerateBtn.addEventListener('click', generateText);
+
+        inputText.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                generateText();
+            }
+        });
+
+        inputText.addEventListener('input', function() {
+            if (this.value.trim()) {
+                inputError.classList.add('hidden');
+                this.classList.remove('border-red-500');
+            }
+        });
+    </script>
+</body>
+</html>
